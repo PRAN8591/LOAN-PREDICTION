@@ -1,0 +1,60 @@
+#Cibil Score 
+a <- read.csv("cibil.csv")
+View(a)
+summary(a)
+linearMod <- lm(CreditScor ~ Income, data=a)
+print(linearMod)
+summary(linearMod)
+scatter.smooth(x=a$Income, y=a$CreditScor, main="CreditScor ~ Income")
+
+set.seed(100)
+trainingRowIndex <- sample(1:nrow(a), 0.8*nrow(a))
+trainingData <- a[trainingRowIndex, ] 
+testData  <- a[-trainingRowIndex, ]
+
+logitMod <- glm(Approved ~ Debt + Income, family="binomial", data = trainingData)
+
+predictedY <- predict(logitMod, testData, type="response") 
+
+str(a)
+glm(Approved ~ CreditScor, family="binomial", data = a)
+
+a <- a[,-1]
+
+for(i in 1:9) {
+  a[, i] <- as.numeric(as.character(a[, i]))
+}
+a$Approved <- ifelse(a$Approved == "+", 1, 0)
+a$Approved <- factor(a$Approved, levels = c(0, 1))
+table(a$Approved)
+library(caret)
+'%ni%' <- Negate('%in%')  # define 'not in' func
+options(scipen=999) 
+
+set.seed(100)
+trainDataIndex <- createDataPartition(a$Approved, p=0.7, list = F)  # 70% training data
+trainData <- a[trainDataIndex, ]
+testData <- a[-trainDataIndex, ]
+table(trainData$Approved)
+# Down Sample
+set.seed(100)
+down_train <- downSample(x = trainData[, colnames(trainData) %ni% "Approved"],
+                         y = trainData$Approved)
+
+table(down_train$Approved)
+set.seed(100)
+up_train <- upSample(x = trainData[, colnames(trainData) %ni% "Approved"],
+                     y = trainData$Approved)
+
+table(up_train$Approved)
+
+
+logitmod <- glm(Class ~ Employed + CreditScor + Income, family = "binomial", data=down_train)
+
+summary(logitmod)
+pred <- predict(logitmod, newdata = testData, type = "response")
+
+y_pred_num <- ifelse(pred > 0.5, 1, 0)
+y_pred <- factor(y_pred_num, levels=c(0, 1))
+y_act <- testData$Approved
+mean(y_pred == y_act)
